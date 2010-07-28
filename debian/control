@@ -1,0 +1,22 @@
+Source: python-boto
+Section: python
+Priority: optional
+Maintainer: Alon Swartz <alon@turnkeylinux.org>
+Build-Depends: debhelper (>> 4.2.0), python (>= 2.4)
+Standards-Version: 3.6.1
+
+Package: python-boto
+Architecture: all
+Depends: python (>= 2.4)
+Description: Python interface to Amazon's Web Services
+ Boto is a Python interface to the infrastructure services available from
+ Amazon.
+ .
+ Boto supports the following services:
+  * Elastic Compute Cloud (EC2)
+  * SimpleDB
+  * Simple Storage Service (S3)
+  * CloudFront
+  * Simple Queue Service (SQS)
+  * Elastic MapReduce
+  * Relational Database Service (RDS)

@@ -21,15 +21,33 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
-try:
-    from setuptools import setup
-except ImportError:
-    from distutils.core import setup
+import re
+import os.path
+import commands
 
-from boto import Version
+from distutils.core import setup
+
+class ExecError(Exception):
+    pass
+
+def _getoutput(command):
+    status, output = commands.getstatusoutput(command)
+    if status != 0:
+        raise ExecError()
+    return output
+
+def get_version():
+    if not os.path.exists("debian/changelog"):
+        return None
+
+    output = _getoutput("dpkg-parsechangelog")
+    version = [ line.split(" ")[1]
+                for line in output.split("\n")
+                if line.startswith("Version:") ][0]
+    return version
 
 setup(name = "boto",
-      version = Version,
+      version = get_version(),
       description = "Amazon Web Services Library",
       long_description="Python interface to Amazon's Web Services.",
       author = "Mitch Garnaat",

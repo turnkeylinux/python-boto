@@ -36,7 +36,15 @@ class S3ConnectionTest (unittest.TestCase):
 
     def test_1_basic(self):
         print '--- running S3Connection tests ---'
-        c = S3Connection()
+
+        # optionally test s3 with devpay headers if set
+        headers = {}
+        X_AMZ_SECURITY_TOKEN = os.getenv('X_AMZ_SECURITY_TOKEN', None)
+        if X_AMZ_SECURITY_TOKEN:
+            print '--- using devpay security token ---'
+            headers['x-amz-security-token'] = X_AMZ_SECURITY_TOKEN
+
+        c = S3Connection(headers=headers)
         # create a new, empty bucket
         bucket_name = 'test-%d' % int(time.time())
         bucket = c.create_bucket(bucket_name)
@@ -72,9 +80,9 @@ class S3ConnectionTest (unittest.TestCase):
         # test a few variations on get_all_keys - first load some data
         # for the first one, let's override the content type
         phony_mimetype = 'application/x-boto-test'
-        headers = {'Content-Type': phony_mimetype}
+        extra_headers = {'Content-Type': phony_mimetype}
         k.name = 'foo/bar'
-        k.set_contents_from_string(s1, headers)
+        k.set_contents_from_string(s1, extra_headers)
         k.name = 'foo/bas'
         k.set_contents_from_filename('foobar')
         k.name = 'foo/bat'

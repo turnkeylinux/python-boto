@@ -97,8 +97,10 @@ class S3Connection(AWSAuthConnection):
                  is_secure=True, port=None, proxy=None, proxy_port=None,
                  proxy_user=None, proxy_pass=None,
                  host=DefaultHost, debug=0, https_connection_factory=None,
-                 calling_format=SubdomainCallingFormat(), path='/'):
+                 calling_format=SubdomainCallingFormat(), path='/',
+                 headers={}):
         self.calling_format = calling_format
+        self.headers = headers
         AWSAuthConnection.__init__(self, host,
                 aws_access_key_id, aws_secret_access_key,
                 is_secure, port, proxy, proxy_port, proxy_user, proxy_pass,
@@ -219,13 +221,11 @@ class S3Connection(AWSAuthConnection):
 
 
     def generate_url(self, expires_in, method, bucket='', key='',
-                     headers=None, query_auth=True, force_http=False):
-        if not headers:
-            headers = {}
+                     query_auth=True, force_http=False):
         expires = int(time.time() + expires_in)
         auth_path = self.calling_format.build_auth_path(bucket, key)
         canonical_str = boto.utils.canonical_string(method, auth_path,
-                                                    headers, expires)
+                                                    self.headers, expires)
         hmac_copy = self.hmac.copy()
         hmac_copy.update(canonical_str)
         b64_hmac = base64.encodestring(hmac_copy.digest()).strip()
@@ -234,8 +234,8 @@ class S3Connection(AWSAuthConnection):
         if query_auth:
             query_part = '?' + self.QueryString % (encoded_canonical, expires,
                                              self.aws_access_key_id)
-            if 'x-amz-security-token' in headers:
-                query_part += '&x-amz-security-token=%s' % urllib.quote(headers['x-amz-security-token']);
+            if 'x-amz-security-token' in self.headers:
+                query_part += '&x-amz-security-token=%s' % urllib.quote(self.headers['x-amz-security-token']);
         else:
             query_part = ''
         if force_http:
@@ -247,17 +247,17 @@ class S3Connection(AWSAuthConnection):
         return self.calling_format.build_url_base(protocol, self.server_name(port),
                                                   bucket, key) + query_part
 
-    def get_all_buckets(self, headers=None):
+    def get_all_buckets(self):
         response = self.make_request('GET')
         body = response.read()
         if response.status > 300:
-            raise S3ResponseError(response.status, response.reason, body, headers=headers)
+            raise S3ResponseError(response.status, response.reason, body)
         rs = ResultSet([('Bucket', Bucket)])
         h = handler.XmlHandler(rs, self)
         xml.sax.parseString(body, h)
         return rs
 
-    def get_canonical_user_id(self, headers=None):
+    def get_canonical_user_id(self):
         """
         Convenience method that returns the "CanonicalUserID" of the user who's credentials
         are associated with the connection.  The only way to get this value is to do a GET
@@ -268,24 +268,23 @@ class S3Connection(AWSAuthConnection):
         :rtype: string
         :return: A string containing the canonical user id.
         """
-        rs = self.get_all_buckets(headers=headers)
+        rs = self.get_all_buckets()
         return rs.ID
 
-    def get_bucket(self, bucket_name, validate=True, headers=None):
-        bucket = Bucket(self, bucket_name)
+    def get_bucket(self, bucket_name, validate=True):
+        bucket = Bucket(self, bucket_name, headers=self.headers)
         if validate:
-            bucket.get_all_keys(headers, maxkeys=0)
+            bucket.get_all_keys(maxkeys=0)
         return bucket
 
-    def lookup(self, bucket_name, validate=True, headers=None):
+    def lookup(self, bucket_name, validate=True):
         try:
-            bucket = self.get_bucket(bucket_name, validate, headers=headers)
+            bucket = self.get_bucket(bucket_name, validate)
         except:
             bucket = None
         return bucket
 
-    def create_bucket(self, bucket_name, headers=None,
-                      location=Location.DEFAULT, policy=None):
+    def create_bucket(self, bucket_name, location=Location.DEFAULT, policy=None):
         """
         Creates a new located bucket. By default it's in the USA. You can pass
         Location.EU to create an European bucket.
@@ -293,9 +292,6 @@ class S3Connection(AWSAuthConnection):
         :type bucket_name: string
         :param bucket_name: The name of the new bucket
         
-        :type headers: dict
-        :param headers: Additional headers to pass along with the request to AWS.
-
         :type location: :class:`boto.s3.connection.Location`
         :param location: The location of the new bucket
         
@@ -308,17 +304,17 @@ class S3Connection(AWSAuthConnection):
             raise Exception("Bucket names must be lower case.")
 
         if policy:
-            if headers:
-                headers['x-amz-acl'] = policy
-            else:
-                headers = {'x-amz-acl' : policy}
+            extra_headers = {'x-amz-acl' : policy}
+        else:
+            extra_headers = {}
+
         if location == Location.DEFAULT:
             data = ''
         else:
             data = '<CreateBucketConstraint><LocationConstraint>' + \
                     location + '</LocationConstraint></CreateBucketConstraint>'
-        response = self.make_request('PUT', bucket_name, headers=headers,
-                data=data)
+        response = self.make_request('PUT', bucket_name, extra_headers=extra_headers,
+             data=data)
         body = response.read()
         if response.status == 409:
             raise S3CreateError(response.status, response.reason, body)
@@ -327,13 +323,13 @@ class S3Connection(AWSAuthConnection):
         else:
             raise S3ResponseError(response.status, response.reason, body)
 
-    def delete_bucket(self, bucket, headers=None):
-        response = self.make_request('DELETE', bucket, headers=headers)
+    def delete_bucket(self, bucket):
+        response = self.make_request('DELETE', bucket)
         body = response.read()
         if response.status != 204:
             raise S3ResponseError(response.status, response.reason, body)
 
-    def make_request(self, method, bucket='', key='', headers=None, data='',
+    def make_request(self, method, bucket='', key='', extra_headers={}, data='',
             query_args=None, sender=None):
         if isinstance(bucket, Bucket):
             bucket = bucket.name
@@ -345,6 +341,8 @@ class S3Connection(AWSAuthConnection):
         if query_args:
             path += '?' + query_args
             auth_path += '?' + query_args
+        headers = self.headers.copy()
+        headers.update(extra_headers)
         return AWSAuthConnection.make_request(self, method, path, headers,
                 data, host, auth_path, sender)
 

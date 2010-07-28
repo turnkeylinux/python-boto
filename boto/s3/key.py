@@ -91,12 +91,9 @@ class Key(object):
         else:
             self.delete_marker = False
 
-    def open_read(self, headers=None, query_args=None):
+    def open_read(self, query_args=None):
         """
         Open this key for reading
-        
-        :type headers: dict
-        :param headers: Headers to pass in the web request
         
         :type query_args: string
         :param query_args: Arguments to pass in the query string (ie, 'torrent')
@@ -106,7 +103,7 @@ class Key(object):
             
             self.resp = self.bucket.connection.make_request('GET',
                                                             self.bucket.name,
-                                                            self.name, headers,
+                                                            self.name, 
                                                             query_args=query_args)
             if self.resp.status < 199 or self.resp.status > 299:
                 body = self.resp.read()
@@ -126,23 +123,21 @@ class Key(object):
                     self.last_modified = value
             self.handle_version_headers(self.resp)
 
-    def open_write(self, headers=None):
+    def open_write(self):
         """
         Open this key for writing. 
         Not yet implemented
         
-        :type headers: dict
-        :param headers: Headers to pass in the write request
         """
         raise BotoClientError('Not Implemented')
 
-    def open(self, mode='r', headers=None, query_args=None):
+    def open(self, mode='r', query_args=None):
         if mode == 'r':
             self.mode = 'r'
-            self.open_read(headers=headers, query_args=query_args)
+            self.open_read(query_args=query_args)
         elif mode == 'w':
             self.mode = 'w'
-            self.open_write(headers=headers)
+            self.open_write()
         else:
             raise BotoClientError('Invalid mode: %s' % mode)
 
@@ -253,29 +248,29 @@ class Key(object):
         self.metadata.update(d)
     
     # convenience methods for setting/getting ACL
-    def set_acl(self, acl_str, headers=None):
+    def set_acl(self, acl_str):
         if self.bucket != None:
-            self.bucket.set_acl(acl_str, self.name, headers=headers)
+            self.bucket.set_acl(acl_str, self.name)
 
-    def get_acl(self, headers=None):
+    def get_acl(self):
         if self.bucket != None:
-            return self.bucket.get_acl(self.name, headers=headers)
+            return self.bucket.get_acl(self.name)
 
-    def get_xml_acl(self, headers=None):
+    def get_xml_acl(self):
         if self.bucket != None:
-            return self.bucket.get_xml_acl(self.name, headers=headers)
+            return self.bucket.get_xml_acl(self.name)
 
-    def set_xml_acl(self, acl_str, headers=None):
+    def set_xml_acl(self, acl_str):
         if self.bucket != None:
-            return self.bucket.set_xml_acl(acl_str, self.name, headers=headers)
+            return self.bucket.set_xml_acl(acl_str, self.name)
 
-    def set_canned_acl(self, acl_str, headers=None):
-        return self.bucket.set_canned_acl(acl_str, self.name, headers)
+    def set_canned_acl(self, acl_str):
+        return self.bucket.set_canned_acl(acl_str, self.name)
         
-    def make_public(self, headers=None):
-        return self.bucket.set_canned_acl('public-read', self.name, headers)
+    def make_public(self):
+        return self.bucket.set_canned_acl('public-read', self.name)
 
-    def generate_url(self, expires_in, method='GET', headers=None,
+    def generate_url(self, expires_in, method='GET',
                      query_auth=True, force_http=False):
         """
         Generate a URL to access this key.
@@ -286,9 +281,6 @@ class Key(object):
         :type method: string
         :param method: The method to use for retrieving the file (default is GET)
         
-        :type headers: dict
-        :param headers: Any headers to pass along in the request
-        
         :type query_auth: bool
         :param query_auth: 
         
@@ -297,17 +289,17 @@ class Key(object):
         """
         return self.bucket.connection.generate_url(expires_in, method,
                                                    self.bucket.name, self.name,
-                                                   headers, query_auth, force_http)
+                                                   query_auth, force_http)
 
-    def send_file(self, fp, headers=None, cb=None, num_cb=10):
+    def send_file(self, fp, extra_headers=None, cb=None, num_cb=10):
         """
         Upload a file to a key into a bucket on S3.
         
         :type fp: file
         :param fp: The file pointer to upload
         
-        :type headers: dict
-        :param headers: The headers to pass along with the PUT request
+        :type extra_headers: dict
+        :param extra_headers: Extra headers to pass along with the PUT request
         
         :type cb: function
         :param cb: a callback function that will be called to report
@@ -322,10 +314,10 @@ class Key(object):
              the maximum number of times the callback will be called during the file transfer.  
              
         """
-        def sender(http_conn, method, path, data, headers):
+        def sender(http_conn, method, path, data, extra_headers):
             http_conn.putrequest(method, path)
-            for key in headers:
-                http_conn.putheader(key, headers[key])
+            for key in extra_headers:
+                http_conn.putheader(key, extra_headers[key])
             http_conn.endheaders()
             fp.seek(0)
             save_debug = self.bucket.connection.debug
@@ -365,26 +357,22 @@ class Key(object):
             else:
                 raise S3ResponseError(response.status, response.reason, body)
 
-        if not headers:
-            headers = {}
-        else:
-            headers = headers.copy()
-        headers['User-Agent'] = UserAgent
-        headers['Content-MD5'] = self.base64md5
-        if headers.has_key('Content-Type'):
-            self.content_type = headers['Content-Type']
+        extra_headers['User-Agent'] = UserAgent
+        extra_headers['Content-MD5'] = self.base64md5
+        if extra_headers.has_key('Content-Type'):
+            self.content_type = extra_headers['Content-Type']
         elif self.path:
             self.content_type = mimetypes.guess_type(self.path)[0]
             if self.content_type == None:
                 self.content_type = self.DefaultContentType
-            headers['Content-Type'] = self.content_type
+            extra_headers['Content-Type'] = self.content_type
         else:
-            headers['Content-Type'] = self.content_type
-        headers['Content-Length'] = str(self.size)
-        headers['Expect'] = '100-Continue'
-        headers = boto.utils.merge_meta(headers, self.metadata)
+            extra_headers['Content-Type'] = self.content_type
+        extra_headers['Content-Length'] = str(self.size)
+        extra_headers['Expect'] = '100-Continue'
+        extra_headers = boto.utils.merge_meta(extra_headers, self.metadata)
         resp = self.bucket.connection.make_request('PUT', self.bucket.name,
-                                                   self.name, headers,
+                                                   self.name, extra_headers,
                                                    sender=sender)
         self.handle_version_headers(resp)
 
@@ -413,8 +401,8 @@ class Key(object):
         fp.seek(0)
         return (hex_md5, base64md5)
 
-    def set_contents_from_file(self, fp, headers=None, replace=True, cb=None, num_cb=10,
-                               policy=None, md5=None):
+    def set_contents_from_file(self, fp, extra_headers={}, replace=True, cb=None,
+                               num_cb=10, policy=None, md5=None):
         """
         Store an object in S3 using the name of the Key object as the
         key in S3 and the contents of the file pointed to by 'fp' as the
@@ -423,8 +411,8 @@ class Key(object):
         :type fp: file
         :param fp: the file whose contents to upload
         
-        :type headers: dict
-        :param headers: additional HTTP headers that will be sent with the PUT request.
+        :type extra_headers: dict
+        :param extra_headers: Extra headers to pass along with the PUT request
 
         :type replace: bool
         :param replace: If this parameter is False, the method
@@ -457,10 +445,8 @@ class Key(object):
                     used as the MD5 values of the file.  Otherwise, the checksum will be computed.
         """
         if policy:
-            if headers:
-                headers['x-amz-acl'] = policy
-            else:
-                headers = {'x-amz-acl' : policy}
+            extra_headers['x-amz-acl'] = policy
+
         if hasattr(fp, 'name'):
             self.path = fp.name
         if self.bucket != None:
@@ -474,10 +460,10 @@ class Key(object):
                 k = self.bucket.lookup(self.name)
                 if k:
                     return
-            self.send_file(fp, headers, cb, num_cb)
+            self.send_file(fp, extra_headers, cb, num_cb)
 
-    def set_contents_from_filename(self, filename, headers=None, replace=True, cb=None, num_cb=10,
-                                   policy=None, md5=None):
+    def set_contents_from_filename(self, filename, extra_headers={}, replace=True,
+                                   cb=None, num_cb=10, policy=None, md5=None):
         """
         Store an object in S3 using the name of the Key object as the
         key in S3 and the contents of the file named by 'filename'.
@@ -487,9 +473,9 @@ class Key(object):
         :type filename: string
         :param filename: The name of the file that you want to put onto S3
         
-        :type headers: dict
-        :param headers: Additional headers to pass along with the request to AWS.
-        
+        :type extra_headers: dict
+        :param extra_headers: Extra headers to pass along with the PUT request
+
         :type replace: bool
         :param replace: If True, replaces the contents of the file if it already exists.
         
@@ -517,23 +503,23 @@ class Key(object):
                     used as the MD5 values of the file.  Otherwise, the checksum will be computed.
         """
         fp = open(filename, 'rb')
-        self.set_contents_from_file(fp, headers, replace, cb, num_cb, policy)
+        self.set_contents_from_file(fp, extra_headers, replace, cb, num_cb, policy)
         fp.close()
 
-    def set_contents_from_string(self, s, headers=None, replace=True, cb=None, num_cb=10,
-                                 policy=None, md5=None):
+    def set_contents_from_string(self, s, extra_headers={}, replace=True, cb=None,
+                                 num_cb=10, policy=None, md5=None):
         """
         Store an object in S3 using the name of the Key object as the
         key in S3 and the string 's' as the contents.
         See set_contents_from_file method for details about the
         parameters.
         
-        :type headers: dict
-        :param headers: Additional headers to pass along with the request to AWS.
-        
         :type replace: bool
         :param replace: If True, replaces the contents of the file if it already exists.
         
+        :type extra_headers: dict
+        :param extra_headers: Extra headers to pass along with the PUT request
+
         :type cb: function
         :param cb: (optional) a callback function that will be called to report
              progress on the download.  The callback should accept two integer
@@ -558,20 +544,16 @@ class Key(object):
                     used as the MD5 values of the file.  Otherwise, the checksum will be computed.
         """
         fp = StringIO.StringIO(s)
-        r = self.set_contents_from_file(fp, headers, replace, cb, num_cb, policy)
+        r = self.set_contents_from_file(fp, extra_headers, replace, cb, num_cb, policy)
         fp.close()
         return r
 
-    def get_file(self, fp, headers=None, cb=None, num_cb=10,
-                 torrent=False, version_id=None):
+    def get_file(self, fp, cb=None, num_cb=10, torrent=False, version_id=None):
         """
         Retrieves a file from an S3 Key
         
         :type fp: file
         :param fp: File pointer to put the data into
-        
-        :type headers: string
-        :param: headers to send when retrieving the files
         
         :type cb: function
         :param cb: (optional) a callback function that will be called to report
@@ -605,7 +587,7 @@ class Key(object):
             query_args = 'torrent'
         elif version_id:
             query_args = 'versionId=%s' % version_id
-        self.open('r', headers, query_args=query_args)
+        self.open('r', query_args=query_args)
         for bytes in self:
             fp.write(bytes)
             if cb:
@@ -619,15 +601,12 @@ class Key(object):
         self.close()
         self.bucket.connection.debug = save_debug
 
-    def get_torrent_file(self, fp, headers=None, cb=None, num_cb=10):
+    def get_torrent_file(self, fp, cb=None, num_cb=10):
         """
         Get a torrent file (see to get_file)
         
         :type fp: file
         :param fp: The file pointer of where to put the torrent
-        
-        :type headers: dict
-        :param headers: Headers to be passed
         
         :type cb: function
         :param cb: Callback function to call on retrieved data
@@ -638,11 +617,9 @@ class Key(object):
              the maximum number of times the callback will be called during the file transfer.  
              
         """
-        return self.get_file(fp, headers, cb, num_cb, torrent=True)
+        return self.get_file(fp, cb, num_cb, torrent=True)
     
-    def get_contents_to_file(self, fp, headers=None,
-                             cb=None, num_cb=10,
-                             torrent=False,
+    def get_contents_to_file(self, fp, cb=None, num_cb=10, torrent=False,
                              version_id=None):
         """
         Retrieve an object from S3 using the name of the Key object as the
@@ -651,9 +628,6 @@ class Key(object):
         
         :type fp: File -like object
         :param fp:
-        
-        :type headers: dict
-        :param headers: additional HTTP headers that will be sent with the GET request.
         
         :type cb: function
         :param cb: (optional) a callback function that will be called to report
@@ -673,12 +647,9 @@ class Key(object):
 
         """
         if self.bucket != None:
-            self.get_file(fp, headers, cb, num_cb, torrent=torrent,
-                          version_id=version_id)
+            self.get_file(fp, cb, num_cb, torrent=torrent, version_id=version_id)
 
-    def get_contents_to_filename(self, filename, headers=None,
-                                 cb=None, num_cb=10,
-                                 torrent=False,
+    def get_contents_to_filename(self, filename, cb=None, num_cb=10, torrent=False,
                                  version_id=None):
         """
         Retrieve an object from S3 using the name of the Key object as the
@@ -688,9 +659,6 @@ class Key(object):
         
         :type filename: string
         :param filename: The filename of where to put the file contents
-        
-        :type headers: dict
-        :param headers: Any additional headers to send in the request
         
         :type cb: function
         :param cb: (optional) a callback function that will be called to report
@@ -710,7 +678,7 @@ class Key(object):
         
         """
         fp = open(filename, 'wb')
-        self.get_contents_to_file(fp, headers, cb, num_cb, torrent=torrent,
+        self.get_contents_to_file(fp, cb, num_cb, torrent=torrent,
                                   version_id=version_id)
         fp.close()
         # if last_modified date was sent from s3, try to set file's timestamp
@@ -721,18 +689,12 @@ class Key(object):
                 os.utime(fp.name, (modified_stamp, modified_stamp))
             except Exception: pass
 
-    def get_contents_as_string(self, headers=None,
-                               cb=None, num_cb=10,
-                               torrent=False,
-                               version_id=None):
+    def get_contents_as_string(self, cb=None, num_cb=10, torrent=False, version_id=None):
         """
         Retrieve an object from S3 using the name of the Key object as the
         key in S3.  Return the contents of the object as a string.
         See get_contents_to_file method for details about the
         parameters.
-        
-        :type headers: dict
-        :param headers: Any additional headers to send in the request
         
         :type cb: function
         :param cb: (optional) a callback function that will be called to report
@@ -759,7 +721,7 @@ class Key(object):
         :returns: The contents of the file as a string
         """
         fp = StringIO.StringIO()
-        self.get_contents_to_file(fp, headers, cb, num_cb, torrent=torrent,
+        self.get_contents_to_file(fp, cb, num_cb, torrent=torrent,
                                   version_id=version_id)
         return fp.getvalue()
 

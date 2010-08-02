@@ -19,6 +19,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
+import os
 import xml.sax
 import urllib, base64
 import time
@@ -88,6 +89,14 @@ class Location:
 
 #boto.set_stream_logger('s3')
     
+def _environ_get_s3_headers():
+    s3_headers = os.environ.get('AWS_S3_HEADERS')
+    if not s3_headers:
+        return {}
+
+    return dict([ s3_header.split('=', 1) 
+                  for s3_header in s3_headers.split(':') ])
+
 class S3Connection(AWSAuthConnection):
 
     DefaultHost = 's3.amazonaws.com'
@@ -100,7 +109,10 @@ class S3Connection(AWSAuthConnection):
                  calling_format=SubdomainCallingFormat(), path='/',
                  headers={}):
         self.calling_format = calling_format
-        self.headers = headers
+
+        self.headers = _environ_get_s3_headers()
+        self.headers.update(headers)
+
         AWSAuthConnection.__init__(self, host,
                 aws_access_key_id, aws_secret_access_key,
                 is_secure, port, proxy, proxy_port, proxy_user, proxy_pass,

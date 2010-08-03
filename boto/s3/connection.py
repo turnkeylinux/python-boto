@@ -86,6 +86,7 @@ class Location:
     DEFAULT = ''
     EU = 'EU'
     USWest = 'us-west-1'
+    APAC = 'ap-southeast-1'
 
 #boto.set_stream_logger('s3')
     

@@ -20,12 +20,14 @@
 # IN THE SOFTWARE.
 
 from boto.connection import AWSQueryConnection
+import xml.sax
 from boto.sqs.regioninfo import SQSRegionInfo
 from boto.sqs.queue import Queue
 from boto.sqs.message import Message
 from boto.sqs.attributes import Attributes
+from boto import handler
+from boto.resultset import ResultSet
 from boto.exception import SQSError
-
 
 class SQSConnection(AWSQueryConnection):
     """
@@ -155,35 +157,7 @@ class SQSConnection(AWSQueryConnection):
                              queue.id, queue)
 
     def delete_message(self, queue, message):
-        """
-        Delete a message from a queue.
-
-        :type queue: A :class:`boto.sqs.queue.Queue` object
-        :param queue: The Queue from which messages are read.
-        
-        :type message: A :class:`boto.sqs.message.Message` object
-        :param message: The Message to be deleted
-        
-        :rtype: bool
-        :return: True if successful, False otherwise.
-        """
         params = {'ReceiptHandle' : message.receipt_handle}
-        return self.get_status('DeleteMessage', params, queue.id)
-
-    def delete_message_from_handle(self, queue, receipt_handle):
-        """
-        Delete a message from a queue, given a receipt handle.
-
-        :type queue: A :class:`boto.sqs.queue.Queue` object
-        :param queue: The Queue from which messages are read.
-        
-        :type receipt_handle: str
-        :param receipt_handle: The receipt handle for the message
-        
-        :rtype: bool
-        :return: True if successful, False otherwise.
-        """
-        params = {'ReceiptHandle' : receipt_handle}
         return self.get_status('DeleteMessage', params, queue.id)
 
     def send_message(self, queue, message_content):

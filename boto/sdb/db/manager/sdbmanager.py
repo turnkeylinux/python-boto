@@ -28,9 +28,9 @@ from boto.sdb.db.blob import Blob
 from boto.sdb.db.property import ListProperty, MapProperty
 from datetime import datetime
 from boto.exception import SDBPersistenceError
+from tempfile import TemporaryFile
 
 ISO8601 = '%Y-%m-%dT%H:%M:%SZ'
-
 
 class SDBConverter:
     """
@@ -290,32 +290,19 @@ class SDBManager(object):
         self.s3 = None
         self.bucket = None
         self.converter = SDBConverter(self)
-        self._sdb = None
-        self._domain = None
-
-    @property
-    def sdb(self):
-        if self._sdb is None:
-            self._connect()
-        return self._sdb
-
-    @property
-    def domain(self):
-        if self._domain is None:
-            self._connect()
-        return self._domain
+        self._connect()
 
     def _connect(self):
-        self._sdb = boto.connect_sdb(aws_access_key_id=self.db_user,
+        self.sdb = boto.connect_sdb(aws_access_key_id=self.db_user,
                                     aws_secret_access_key=self.db_passwd,
                                     is_secure=self.enable_ssl)
         # This assumes that the domain has already been created
         # It's much more efficient to do it this way rather than
         # having this make a roundtrip each time to validate.
         # The downside is that if the domain doesn't exist, it breaks
-        self._domain = self._sdb.lookup(self.db_name, validate=False)
-        if not self._domain:
-            self._domain = self._sdb.create_domain(self.db_name)
+        self.domain = self.sdb.lookup(self.db_name, validate=False)
+        if not self.domain:
+            self.domain = self.sdb.create_domain(self.db_name)
 
     def _object_lister(self, cls, query_lister):
         for item in query_lister:
@@ -444,8 +431,8 @@ class SDBManager(object):
                         query_parts.append("`%s` %s '%s'" % (name, op, val.replace("'", "''")))
 
         type_query = "(`__type__` = '%s'" % cls.__name__
-        for subclass in self._get_all_decendents(cls).keys():
-            type_query += " or `__type__` = '%s'" % subclass
+        for subclass in cls.__sub_classes__:
+            type_query += " or `__type__` = '%s'" % subclass.__name__
         type_query +=")"
         query_parts.append(type_query)
 
@@ -460,14 +447,6 @@ class SDBManager(object):
         else:
             return ""
 
-
-    def _get_all_decendents(self, cls):
-        """Get all decendents for a given class"""
-        decendents = {}
-        for sc in cls.__sub_classes__:
-            decendents[sc.__name__] = sc
-            decendents.update(self._get_all_decendents(sc))
-        return decendents
 
     def query_gql(self, query_string, *args, **kwds):
         raise NotImplementedError, "GQL queries not supported in SimpleDB"

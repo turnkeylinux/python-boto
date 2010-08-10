@@ -22,16 +22,14 @@
 """
 High-level abstraction of an EC2 server
 """
-import boto
-import boto.utils
+import boto, boto.utils
 from boto.mashups.iobject import IObject
 from boto.pyami.config import Config, BotoConfigPath
 from boto.mashups.interactive import interactive_shell
 from boto.sdb.db.model import Model
-from boto.sdb.db.property import StringProperty
+from boto.sdb.db.property import *
 import os
 import StringIO
-
 
 class ServerSet(list):
 
@@ -59,11 +57,7 @@ class ServerSet(list):
 
 class Server(Model):
 
-    @property
-    def ec2(self):
-        if self._ec2 is None:
-            self._ec2 = boto.connect_ec2()
-        return self._ec2
+    ec2 = boto.connect_ec2()
 
     @classmethod
     def Inventory(cls):
@@ -93,7 +87,6 @@ class Server(Model):
         self._ssh_client = None
         self._pkey = None
         self._config = None
-        self._ec2 = None
 
     name = StringProperty(unique=True, verbose_name="Name")
     instance_id = StringProperty(verbose_name="Instance ID")
@@ -304,7 +297,7 @@ class Server(Model):
             sftp_client.remove(BotoConfigPath)
         except:
             pass
-        command = 'sudo ec2-bundle-vol '
+        command = 'ec2-bundle-vol '
         command += '-c %s -k %s ' % (remote_cert_file, remote_key_file)
         command += '-u %s ' % self._reservation.owner_id
         command += '-p %s ' % prefix

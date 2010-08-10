@@ -23,7 +23,12 @@
 Represents a connection to the EC2 service.
 """
 
+import urllib
+import base64
+import boto
+from boto import config
 from boto.ec2.connection import EC2Connection
+from boto.resultset import ResultSet
 from boto.vpc.vpc import VPC
 from boto.vpc.customergateway import CustomerGateway
 from boto.vpc.vpngateway import VpnGateway, Attachment
@@ -376,7 +381,7 @@ class VPCConnection(EC2Connection):
         :rtype: bool
         :return: True if successful
         """
-        params = {'DhcpOptionsId': dhcp_options_id}
+        params = {'DhcpOptionsId': subnet_id}
         return self.get_status('DeleteDhcpOptions', params)
 
     def associate_dhcp_options(self, dhcp_options_id, vpc_id):
@@ -392,7 +397,7 @@ class VPCConnection(EC2Connection):
         :rtype: bool
         :return: True if successful
         """
-        params = {'DhcpOptionsId': dhcp_options_id,
+        params = {'DhcpOptionsId': dhcp_option,
                   'VpcId' : vpc_id}
         return self.get_status('AssociateDhcpOptions', params)
 
@@ -433,7 +438,7 @@ class VPCConnection(EC2Connection):
                 params[('Filter.%d.Key' % i)] = filter[0]
                 params[('Filter.%d.Value.1')] = filter[1]
                 i += 1
-        return self.get_list('DescribeVpnConnections', params, [('item', VpnConnection)])
+        return self.get_list('DescribeVpnConnections', params, [('item', VPNConnection)])
 
     def create_vpn_connection(self, type, customer_gateway_id, vpn_gateway_id):
         """

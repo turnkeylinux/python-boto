@@ -20,7 +20,7 @@
 # IN THE SOFTWARE.
 
 from boto.sdb.db.manager import get_manager
-from boto.sdb.db.property import Property
+from boto.sdb.db.property import *
 from boto.sdb.db.key import Key
 from boto.sdb.db.query import Query
 import boto
@@ -55,7 +55,6 @@ class ModelMeta(type):
         
 class Model(object):
     __metaclass__ = ModelMeta
-    id = None
 
     @classmethod
     def get_lineage(cls):

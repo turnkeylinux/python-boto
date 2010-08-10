@@ -23,6 +23,7 @@ import xml.sax
 import urllib, base64
 import time
 import boto.utils
+import types
 from boto.connection import AWSAuthConnection
 from boto import handler
 from boto.s3.bucket import Bucket
@@ -84,10 +85,7 @@ class OrdinaryCallingFormat(_CallingFormat):
 class Location:
     DEFAULT = ''
     EU = 'EU'
-    USWest = 'us-west-1'
 
-#boto.set_stream_logger('s3')
-    
 class S3Connection(AWSAuthConnection):
 
     DefaultHost = 's3.amazonaws.com'
@@ -115,8 +113,8 @@ class S3Connection(AWSAuthConnection):
         """
         Taken from the AWS book Python examples and modified for use with boto
         """
-        if type(expiration_time) != time.struct_time:
-            raise 'Policy document must include a valid expiration Time object'
+        assert type(expiration_time) == time.struct_time, \
+            'Policy document must include a valid expiration Time object'
 
         # Convert conditions object mappings to condition statements
 
@@ -230,7 +228,7 @@ class S3Connection(AWSAuthConnection):
         hmac_copy.update(canonical_str)
         b64_hmac = base64.encodestring(hmac_copy.digest()).strip()
         encoded_canonical = urllib.quote_plus(b64_hmac)
-        self.calling_format.build_path_base(bucket, key)
+        path = self.calling_format.build_path_base(bucket, key)
         if query_auth:
             query_part = '?' + self.QueryString % (encoded_canonical, expires,
                                              self.aws_access_key_id)
@@ -274,7 +272,7 @@ class S3Connection(AWSAuthConnection):
     def get_bucket(self, bucket_name, validate=True, headers=None):
         bucket = Bucket(self, bucket_name)
         if validate:
-            bucket.get_all_keys(headers, maxkeys=0)
+            rs = bucket.get_all_keys(headers, maxkeys=0)
         return bucket
 
     def lookup(self, bucket_name, validate=True, headers=None):
@@ -284,8 +282,7 @@ class S3Connection(AWSAuthConnection):
             bucket = None
         return bucket
 
-    def create_bucket(self, bucket_name, headers=None,
-                      location=Location.DEFAULT, policy=None):
+    def create_bucket(self, bucket_name, headers=None, location=Location.DEFAULT, policy=None):
         """
         Creates a new located bucket. By default it's in the USA. You can pass
         Location.EU to create an European bucket.
@@ -303,10 +300,6 @@ class S3Connection(AWSAuthConnection):
         :param policy: A canned ACL policy that will be applied to the new key in S3.
              
         """
-        # TODO: Not sure what Exception Type from boto.exception to use.
-        if not bucket_name.islower():
-            raise Exception("Bucket names must be lower case.")
-
         if policy:
             if headers:
                 headers['x-amz-acl'] = policy

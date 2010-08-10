@@ -1,7 +1,6 @@
 from boto.sdb.db.model import Model
-from boto.sdb.db.property import StringProperty, IntegerProperty, BooleanProperty
-from boto.sdb.db.property import DateTimeProperty, FloatProperty, ReferenceProperty
-from boto.sdb.db.property import PasswordProperty, ListProperty, MapProperty
+from boto.sdb.db.property import *
+from boto.sdb.db.manager import get_manager
 from datetime import datetime
 import time
 from boto.exception import SDBPersistenceError

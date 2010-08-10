@@ -1,5 +1,4 @@
 # Copyright (c) 2006-2009 Mitch Garnaat http://garnaat.org/
-# Copyright (c) 2010 Chris Moyer http://coredumped.org/
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the
@@ -28,7 +27,7 @@ import boto.ec2
 from boto.mashups.iobject import IObject
 from boto.pyami.config import BotoConfigPath, Config
 from boto.sdb.db.model import Model
-from boto.sdb.db.property import StringProperty, IntegerProperty, BooleanProperty, CalculatedProperty
+from boto.sdb.db.property import *
 from boto.manage import propget
 from boto.ec2.zone import Zone
 from boto.ec2.keypair import KeyPair
@@ -50,7 +49,7 @@ class Bundler(object):
 
     def copy_x509(self, key_file, cert_file):
         print '\tcopying cert and pk over to /mnt directory on server'
-        self.ssh_client.open_sftp()
+        sftp_client = self.ssh_client.open_sftp()
         path, name = os.path.split(key_file)
         self.remote_key_file = '/mnt/%s' % name
         self.ssh_client.put_file(key_file, self.remote_key_file)
@@ -104,16 +103,16 @@ class Bundler(object):
         self.copy_x509(key_file, cert_file)
         if not fp:
             fp = StringIO.StringIO()
-        fp.write('sudo mv %s /mnt/boto.cfg; ' % BotoConfigPath)
-        fp.write('mv ~/.ssh/authorized_keys /mnt/authorized_keys; ')
+        fp.write('mv %s /mnt/boto.cfg; ' % BotoConfigPath)
+        fp.write('mv /root/.ssh/authorized_keys /mnt/authorized_keys; ')
         if clear_history:
             fp.write('history -c; ')
         fp.write(self.bundle_image(prefix, size, ssh_key))
         fp.write('; ')
         fp.write(self.upload_bundle(bucket, prefix, ssh_key))
         fp.write('; ')
-        fp.write('sudo mv /mnt/boto.cfg %s; ' % BotoConfigPath)
-        fp.write('mv /mnt/authorized_keys ~/.ssh/authorized_keys')
+        fp.write('mv /mnt/boto.cfg %s; ' % BotoConfigPath)
+        fp.write('mv /mnt/authorized_keys /root/.ssh/authorized_keys\n')
         command = fp.getvalue()
         print 'running the following command on the remote server:'
         print command
@@ -122,7 +121,7 @@ class Bundler(object):
         print '\t%s' % t[1]
         print '...complete!'
         print 'registering image...'
-        self.image_id = self.server.ec2.register_image(name=prefix, image_location='%s/%s.manifest.xml' % (bucket, prefix))
+        self.image_id = self.server.ec2.register_image('%s/%s.manifest.xml' % (bucket, prefix))
         return self.image_id
 
 class CommandLineGetter(object):
@@ -174,8 +173,10 @@ class CommandLineGetter(object):
     def get_ami_id(self, params):
         ami = params.get('ami', None)
         if isinstance(ami, str) or isinstance(ami, unicode):
-            for a in self.ec2.get_all_images():
+            ami_list = self.get_ami_list()
+            for l,a in ami_list:
                 if a.id == ami:
+                    ami = a
                     params['ami'] = a
         if not params.get('ami', None):
             prop = StringProperty(name='ami', verbose_name='AMI',
@@ -320,7 +321,6 @@ class Server(Model):
         instances = reservation.instances
         if elastic_ip != None and instances.__len__() > 0:
             instance = instances[0]
-            print 'Waiting for instance to start so we can set its elastic IP address...'
             while instance.update() != 'running':
                 time.sleep(1)
             instance.use_ip(elastic_ip)
@@ -527,12 +527,12 @@ class Server(Model):
         return status
 
     def get_bundler(self, uname='root'):
-        self.get_ssh_key_file()
+        ssh_key_file = self.get_ssh_key_file()
         return Bundler(self, uname)
 
     def get_ssh_client(self, uname='root'):
         from boto.manage.cmdshell import SSHClient
-        self.get_ssh_key_file()
+        ssh_key_file = self.get_ssh_key_file()
         return SSHClient(self, uname=uname)
 
     def install(self, pkg):

@@ -23,6 +23,8 @@ import datetime
 from key import Key
 from boto.utils import Password
 from boto.sdb.db.query import Query
+from tempfile import TemporaryFile
+
 import re
 import boto
 import boto.s3.key
@@ -61,7 +63,7 @@ class Property(object):
             if obj._loaded and hasattr(obj, "on_set_%s" % self.name):
                 fnc = getattr(obj, "on_set_%s" % self.name)
                 value = fnc(value)
-        except Exception:
+        except Exception, e:
             boto.log.exception("Exception running on_set_%s" % self.name)
 
         setattr(obj, self.slot_name, value)
@@ -361,7 +363,14 @@ class ReferenceProperty(Property):
             # the object now that is the attribute has actually been accessed.  This lazy
             # instantiation saves unnecessary roundtrips to SimpleDB
             if isinstance(value, str) or isinstance(value, unicode):
-                value = self.reference_class(value)
+                # This is some minor handling to allow us to use the base "Model" class
+                # as our reference class. If we do so, we're going to assume we're using
+                # our own class's manager to fetch objects
+                if hasattr(self.reference_class, "_manager"):
+                    manager = self.reference_class._manager
+                else:
+                    manager = obj._manager
+                value = manager.get_object(self.reference_class, value)
                 setattr(obj, self.name, value)
             return value
     
@@ -405,7 +414,6 @@ class _ReverseReferenceProperty(Property):
     def __init__(self, model, prop, name):
         self.__model = model
         self.__property = prop
-        self.collection_name = prop
         self.name = name
         self.item_type = model
 
@@ -506,8 +514,6 @@ class ListProperty(Property):
             item_type = self.item_type
         if isinstance(value, item_type):
             value = [value]
-        elif value == None: # Override to allow them to set this to "None" to remove everything
-            value = []
         return super(ListProperty, self).__set__(obj,value)
 
 

@@ -22,11 +22,11 @@
 """
 Exception classes - Subclassing allows you to check for specific errors
 """
-import base64
-import xml.sax
+
 from boto import handler
 from boto.resultset import ResultSet
 
+import xml.sax
 
 class BotoClientError(StandardError):
     """
@@ -243,11 +243,6 @@ class EC2ResponseError(BotoServerError):
         self._errorResultSet = []
         for p in ('errors'):
             setattr(self, p, None)
-
-class EmrResponseError(BotoServerError):
-     """
-     Error in response from EMR
-     """
 
 class _EC2Error:
 

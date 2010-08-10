@@ -19,6 +19,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
+from boto.sdb.item import Item
 
 def query_lister(domain, query='', max_items=None, attr_names=None):
     more_results = True

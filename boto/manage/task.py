@@ -21,7 +21,7 @@
 #
 
 import boto
-from boto.sdb.db.property import StringProperty, DateTimeProperty, IntegerProperty
+from boto.sdb.db.property import *
 from boto.sdb.db.model import Model
 import datetime, subprocess, StringIO, time
 
@@ -72,6 +72,7 @@ class Task(Model):
         If it's an hourly task and it's never been run, run it now.
         If it's a daily task and it's never been run and the hour is right, run it now.
         """
+        need_to_run = False
         boto.log.info('checking Task[%s]-now=%s, last=%s' % (self.name, self.now, self.last_executed))
 
         if self.hourly and not self.last_executed:
@@ -81,7 +82,7 @@ class Task(Model):
             if int(self.hour) == self.now.hour:
                 return 0
             else:
-                return max( (int(self.hour)-self.now.hour), (self.now.hour-int(self.hour)) )*60*60
+                return max((int(self.hour) - self.now.hour),0)*60*60
 
         delta = self.now - self.last_executed
         if self.hourly:
@@ -90,13 +91,10 @@ class Task(Model):
             else:
                 return 60*60 - delta.seconds
         else:
-            if int(self.hour) == self.now.hour:
-                if delta.days >= 1:
-                    return 0
-                else:
-                    return 82800 # 23 hours, just to be safe
+            if delta.days >= 1:
+                return 0
             else:
-                return max( (int(self.hour)-self.now.hour), (self.now.hour-int(self.hour)) )*60*60
+                return min(60*60*24-delta.seconds, 43200)
     
     def _run(self, msg, vtimeout):
         boto.log.info('Task[%s] - running:%s' % (self.name, self.command))
@@ -129,7 +127,7 @@ class Task(Model):
             self._run(msg, vtimeout)
             queue = msg.queue
             new_msg = queue.new_message(self.id)
-            new_msg = queue.write(new_msg)
+            new_msg = queue.write(msg)
             self.message_id = new_msg.id
             self.put()
             boto.log.info('Task[%s] - new message id=%s' % (self.name, new_msg.id))

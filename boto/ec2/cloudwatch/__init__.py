@@ -140,6 +140,7 @@ from boto.connection import AWSQueryConnection
 from boto.ec2.cloudwatch.metric import Metric
 from boto.ec2.cloudwatch.datapoint import Datapoint
 import boto
+import datetime
 
 class CloudWatchConnection(AWSQueryConnection):
 
@@ -193,21 +194,13 @@ class CloudWatchConnection(AWSQueryConnection):
             self.build_list_params(params, statistics, 'Statistics.member.%d')
         return self.get_list('GetMetricStatistics', params, [('member', Datapoint)])
 
-    def list_metrics(self, next_token=None):
+    def list_metrics(self):
         """
         Returns a list of the valid metrics for which there is recorded data available.
-
-        :type next_token: string
-        :param next_token: A maximum of 500 metrics will be returned at one time.
-                           If more results are available, the ResultSet returned
-                           will contain a non-Null next_token attribute.  Passing
-                           that token as a parameter to list_metrics will retrieve
-                           the next page of metrics.
         """
-        params = {}
-        if next_token:
-            params['NextToken'] = next_token
-        return self.get_list('ListMetrics', params, [('member', Metric)])
+        response = self.make_request('ListMetrics')
+        body = response.read()
+        return self.get_list('ListMetrics', None, [('member', Metric)])
         
 
     

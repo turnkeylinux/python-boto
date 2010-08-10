@@ -31,7 +31,7 @@ from boto.resultset import ResultSet
 
 class MTurkConnection(AWSQueryConnection):
     
-    APIVersion = '2008-08-02'
+    APIVersion = '2006-10-31'
     SignatureVersion = '1'
     
     def __init__(self, aws_access_key_id=None, aws_secret_access_key=None,
@@ -317,12 +317,12 @@ class MTurkConnection(AWSQueryConnection):
         """
         Expire a HIT that is no longer needed.
 
-    The effect is identical to the HIT expiring on its own. The HIT no longer appears on the 
-    Mechanical Turk web site, and no new Workers are allowed to accept the HIT. Workers who 
-    have accepted the HIT prior to expiration are allowed to complete it or return it, or 
-    allow the assignment duration to elapse (abandon the HIT). Once all remaining assignments 
-    have been submitted, the expired HIT becomes "reviewable", and will be returned by a call 
-    to GetReviewableHITs.
+	The effect is identical to the HIT expiring on its own. The HIT no longer appears on the 
+	Mechanical Turk web site, and no new Workers are allowed to accept the HIT. Workers who 
+	have accepted the HIT prior to expiration are allowed to complete it or return it, or 
+	allow the assignment duration to elapse (abandon the HIT). Once all remaining assignments 
+	have been submitted, the expired HIT becomes "reviewable", and will be returned by a call 
+	to GetReviewableHITs.
         """
         params = {'HITId' : hit_id,}
         return self._process_request('ForceExpireHIT', params)
@@ -501,15 +501,4 @@ class QuestionFormAnswer(BaseAutoResultElement):
     *NOTE* - currently really only supports free-text answers
     """
 
-    def __init__(self, connection):
-        BaseAutoResultElement.__init__(self, connection)
-        self.fields = []
-        self.qid = None
-
-    def endElement(self, name, value, connection):
-        if name == 'QuestionIdentifier':
-            self.qid = value
-        elif name == 'FreeText' and self.qid:
-            self.fields.append((self.qid,value))
-        elif name == 'Answer':
-            self.qid = None
+    pass

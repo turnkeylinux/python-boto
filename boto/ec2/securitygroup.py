@@ -23,7 +23,6 @@
 Represents an EC2 Security Group
 """
 from boto.ec2.ec2object import EC2Object
-from boto.exception import BotoClientError
 
 class SecurityGroup(EC2Object):
     
@@ -61,9 +60,9 @@ class SecurityGroup(EC2Object):
                 self.status = True
             else:
                 raise Exception(
-                    'Unexpected value of status %s for group %s'%(
+                    'Unexpected value of status %s for image %s'%(
                         value, 
-                        self.name
+                        self.id
                     )
                 )
         else:
@@ -246,7 +245,7 @@ class IPPermissions:
         else:
             setattr(self, name, value)
 
-    def add_grant(self, name=None, owner_id=None, cidr_ip=None):
+    def add_grant(self, owner_id=None, name=None, cidr_ip=None):
         grant = GroupOrCIDR(self)
         grant.owner_id = owner_id
         grant.name = name

@@ -22,7 +22,7 @@
 import uuid
 from boto.cloudfront.identity import OriginAccessIdentity
 from boto.cloudfront.object import Object, StreamingObject
-from boto.cloudfront.signers import ActiveTrustedSigners, TrustedSigners
+from boto.cloudfront.signers import Signer, ActiveTrustedSigners, TrustedSigners
 from boto.cloudfront.logging import LoggingInfo
 from boto.s3.acl import ACL
 
@@ -69,7 +69,7 @@ class DistributionConfig:
         s += '</Enabled>\n'
         if self.origin_access_identity:
             val = self.get_oai_value()
-            s += '<OriginAccessIdentity>%s</OriginAccessIdentity>\n' % val
+            s += '<OriginAccessIdentifier>%s</OriginAccessIdentifier>\n' % val
         if self.trusted_signers:
             s += '<TrustedSigners>\n'
             for signer in self.trusted_signers:

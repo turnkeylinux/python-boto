@@ -21,14 +21,10 @@
 
 from boto.mashups.interactive import interactive_shell
 import boto
-import os
-import time
-import shutil
+import os, time, shutil
 import StringIO
 import paramiko
 import socket
-import subprocess
-
 
 class SSHClient(object):
 
@@ -59,7 +55,7 @@ class SSHClient(object):
             except paramiko.BadHostKeyException:
                 print "%s has an entry in ~/.ssh/known_hosts and it doesn't match" % self.server.hostname
                 print 'Edit that file to remove the entry and then hit return to try again'
-                raw_input('Hit Enter when ready')
+                rawinput('Hit Enter when ready')
                 retry += 1
             except EOFError:
                 print 'Unexpected Error from SSH Connection, retry in 5 seconds'

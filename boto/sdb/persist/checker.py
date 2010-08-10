@@ -20,6 +20,7 @@
 # IN THE SOFTWARE.
 
 from datetime import datetime
+import boto
 from boto.s3.key import Key
 from boto.s3.bucket import Bucket
 from boto.sdb.persist import revive_object_from_id

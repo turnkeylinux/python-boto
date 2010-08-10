@@ -207,16 +207,8 @@ class Instance(EC2Object):
             self._update(rs[0].instances[0])
         return self.state
 
-    def terminate(self):
-        rs = self.connection.terminate_instances([self.id])
-        self._update(rs[0])
-
     def stop(self):
-        rs = self.connection.stop_instances([self.id])
-        self._update(rs[0])
-
-    def start(self):
-        rs = self.connection.start_instances([self.id])
+        rs = self.connection.terminate_instances([self.id])
         self._update(rs[0])
 
     def reboot(self):

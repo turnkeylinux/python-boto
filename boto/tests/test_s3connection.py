@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
+
 # Copyright (c) 2006,2007 Mitch Garnaat http://garnaat.org/
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
@@ -38,13 +38,10 @@ class S3ConnectionTest (unittest.TestCase):
         print '--- running S3Connection tests ---'
 
         # optionally test s3 with devpay headers if set
-        headers = {}
-        X_AMZ_SECURITY_TOKEN = os.getenv('X_AMZ_SECURITY_TOKEN', None)
-        if X_AMZ_SECURITY_TOKEN:
-            print '--- using devpay security token ---'
-            headers['x-amz-security-token'] = X_AMZ_SECURITY_TOKEN
+        if os.environ.has_key('AWS_S3_HEADERS'):
+            print '--- INFO: AWS_S3_HEADERS are set in the environment ---'
 
-        c = S3Connection(headers=headers)
+        c = S3Connection()
         # create a new, empty bucket
         bucket_name = 'test-%d' % int(time.time())
         bucket = c.create_bucket(bucket_name)
@@ -121,21 +118,15 @@ class S3ConnectionTest (unittest.TestCase):
         mdkey2 = 'meta2'
         mdval2 = 'This is the second metadata value'
         k.set_metadata(mdkey2, mdval2)
-        # try a unicode metadata value
-        mdval3 = u'föö'
-        mdkey3 = 'meta3'
-        k.set_metadata(mdkey3, mdval3)
         k.set_contents_from_string(s1)
         k = bucket.lookup('has_metadata')
         assert k.get_metadata(mdkey1) == mdval1
         assert k.get_metadata(mdkey2) == mdval2
-        assert k.get_metadata(mdkey3) == mdval3
         k = bucket.new_key()
         k.name = 'has_metadata'
         k.get_contents_as_string()
         assert k.get_metadata(mdkey1) == mdval1
         assert k.get_metadata(mdkey2) == mdval2
-        assert k.get_metadata(mdkey3) == mdval3
         bucket.delete_key(k)
         # test list and iterator
         rs1 = bucket.list()

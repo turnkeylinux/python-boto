@@ -1,4 +1,4 @@
-.. _vpc_tut:
+.. _ec2_tut:
 
 =======================================
 An Introduction to boto's VPC interface

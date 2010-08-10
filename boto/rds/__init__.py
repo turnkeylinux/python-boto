@@ -20,9 +20,15 @@
 # IN THE SOFTWARE.
 #
 
+import xml.sax
+import base64
+import time
+import boto
 import boto.utils
 import urllib
 from boto.connection import AWSQueryConnection
+from boto import handler
+from boto.resultset import ResultSet
 from boto.rds.dbinstance import DBInstance
 from boto.rds.dbsecuritygroup import DBSecurityGroup
 from boto.rds.parametergroup import ParameterGroup
@@ -106,7 +112,7 @@ class RDSConnection(AWSQueryConnection):
                                db.m2.2xlarge | db.m2.4xlarge
 
         :type engine: str
-        :param engine: Name of database engine. Must be MySQL5.1 for now.
+.       :param engine: Name of database engine.  Must be MySQL5.1 for now.
 
         :type master_username: str
         :param master_username: Name of master user for the DBInstance.
@@ -736,8 +742,8 @@ class RDSConnection(AWSQueryConnection):
             params['UseLatestRestorableTime'] = 'true'
         elif restore_time:
             params['RestoreTime'] = restore_time.isoformat()
-        if dbinstance_class:
-            params['DBInstanceClass'] = dbinstance_class
+        if instance_class:
+            params['DBInstanceClass'] = instance_class
         if port:
             params['Port'] = port
         if availability_zone:

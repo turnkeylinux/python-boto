@@ -24,6 +24,7 @@ import xml.sax
 import urllib, base64
 import time
 import boto.utils
+import types
 from boto.connection import AWSAuthConnection
 from boto import handler
 from boto.s3.bucket import Bucket
@@ -88,8 +89,6 @@ class Location:
     USWest = 'us-west-1'
     APAC = 'ap-southeast-1'
 
-#boto.set_stream_logger('s3')
-    
 def _environ_get_s3_headers():
     s3_headers = os.environ.get('AWS_S3_HEADERS')
     if not s3_headers:
@@ -130,8 +129,8 @@ class S3Connection(AWSAuthConnection):
         """
         Taken from the AWS book Python examples and modified for use with boto
         """
-        if type(expiration_time) != time.struct_time:
-            raise 'Policy document must include a valid expiration Time object'
+        assert type(expiration_time) == time.struct_time, \
+            'Policy document must include a valid expiration Time object'
 
         # Convert conditions object mappings to condition statements
 
@@ -243,7 +242,7 @@ class S3Connection(AWSAuthConnection):
         hmac_copy.update(canonical_str)
         b64_hmac = base64.encodestring(hmac_copy.digest()).strip()
         encoded_canonical = urllib.quote_plus(b64_hmac)
-        self.calling_format.build_path_base(bucket, key)
+        path = self.calling_format.build_path_base(bucket, key)
         if query_auth:
             query_part = '?' + self.QueryString % (encoded_canonical, expires,
                                              self.aws_access_key_id)
@@ -287,7 +286,7 @@ class S3Connection(AWSAuthConnection):
     def get_bucket(self, bucket_name, validate=True):
         bucket = Bucket(self, bucket_name, headers=self.headers)
         if validate:
-            bucket.get_all_keys(maxkeys=0)
+            rs = bucket.get_all_keys(maxkeys=0)
         return bucket
 
     def lookup(self, bucket_name, validate=True):
@@ -312,10 +311,6 @@ class S3Connection(AWSAuthConnection):
         :param policy: A canned ACL policy that will be applied to the new key in S3.
              
         """
-        # TODO: Not sure what Exception Type from boto.exception to use.
-        if not bucket_name.islower():
-            raise Exception("Bucket names must be lower case.")
-
         if policy:
             extra_headers = {'x-amz-acl' : policy}
         else:

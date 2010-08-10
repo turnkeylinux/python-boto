@@ -20,11 +20,10 @@
 # IN THE SOFTWARE.
 
 from boto.s3.user import User
-
+import StringIO
 
 CannedACLStrings = ['private', 'public-read',
                     'public-read-write', 'authenticated-read']
-
 
 class Policy:
 

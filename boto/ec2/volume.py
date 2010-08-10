@@ -20,7 +20,7 @@
 # IN THE SOFTWARE.
 
 """
-Represents an EC2 Elastic Block Storage Volume
+Represents an EC2 Elastic IP Volume
 """
 from boto.ec2.ec2object import EC2Object
 
@@ -156,7 +156,14 @@ class Volume(EC2Object):
 
     def attachment_state(self):
         """
-        Get the attachment state.
+        Get the attachmentSet information for the volume.  This info is stored
+        in a dictionary object and contains at least the following info:
+
+        - volumeId
+        - instanceId
+        - device
+        - status
+        - attachTime
         """
         state = None
         if self.attach_data:

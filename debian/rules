@@ -4,7 +4,7 @@
 #export DH_VERBOSE=1
 
 progname=$(shell awk '/^Source/ {print $$2}' debian/control)
-prefix=debian/$(progname)/usr
+prefix=debian/$(progname)/usr/lib/tklbam/deps
 
 build:
 	mkdir -p $(prefix)
